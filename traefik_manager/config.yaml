@@ -1,0 +1,64 @@
+name: Traefik Manager
+version: "1.15.4"
+slug: traefik_manager
+description: Web UI for the routes, services, middlewares and certificates of a Traefik instance
+url: https://github.com/andrebrait/ha-addon-traefik-manager
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+ports:
+  5000/tcp: null
+ports_description:
+  5000/tcp: Web UI (HTTP; publish it only on a trusted network, or put Traefik in front of it)
+map:
+  - type: homeassistant_config
+    path: /config
+    read_only: false
+  - type: ssl
+    read_only: true
+  - type: share
+    read_only: false
+options:
+  traefik_api_url: http://local-traefik:8080
+  static_config_path: /config/traefik/traefik.yaml
+  dynamic_config_dir: /config/traefik/dynamic
+  acme_json_path: /ssl/traefik/acme.json
+  access_log_path: ""
+  cookie_secure: false
+  admin_password: ""
+  oidc:
+    enabled: false
+    provider_url: ""
+    client_id: ""
+    client_secret: ""
+    display_name: SSO
+    allowed_groups: ""
+    allowed_emails: ""
+  crowdsec:
+    lapi_url: ""
+    api_key: ""
+  env_vars: []
+schema:
+  traefik_api_url: url
+  static_config_path: str?
+  dynamic_config_dir: str
+  acme_json_path: str?
+  access_log_path: str?
+  cookie_secure: bool
+  admin_password: password?
+  oidc:
+    enabled: bool
+    provider_url: str?
+    client_id: str?
+    client_secret: password?
+    display_name: str?
+    allowed_groups: str?
+    allowed_emails: str?
+  crowdsec:
+    lapi_url: str?
+    api_key: password?
+  env_vars:
+    - match(^[A-Z][A-Z0-9_]*=.*$)

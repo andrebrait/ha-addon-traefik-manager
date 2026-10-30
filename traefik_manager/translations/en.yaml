@@ -1,0 +1,33 @@
+configuration:
+  traefik_api_url:
+    name: Traefik API URL
+    description: Traefik's API on the add-on network, for example http://local-traefik:8080
+  static_config_path:
+    name: Static configuration file
+    description: Traefik's static configuration (optional)
+  dynamic_config_dir:
+    name: Dynamic configuration directory
+    description: The directory Traefik's file provider watches
+  acme_json_path:
+    name: ACME storage
+    description: Traefik's acme.json, read-only (optional)
+  access_log_path:
+    name: Access log
+    description: Traefik's access log file (optional)
+  cookie_secure:
+    name: Secure cookies
+    description: Turn on when Traefik Manager is served over HTTPS
+  admin_password:
+    name: Admin password
+    description: Replaces the password stored by the UI
+  oidc:
+    name: OpenID Connect
+    description: Login through an OpenID Connect provider; set allowed groups or e-mails
+  crowdsec:
+    name: CrowdSec
+    description: The LAPI URL and a bouncer key, to show decisions
+  env_vars:
+    name: Other settings
+    description: Further Traefik Manager environment variables, as KEY=VALUE
+network:
+  5000/tcp: Web UI (plain HTTP)

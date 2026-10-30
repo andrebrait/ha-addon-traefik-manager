@@ -1,0 +1,4 @@
+# Traefik Manager's own multi-architecture image; the add-on only adds its start script.
+build_from:
+  amd64: ghcr.io/chr0nzz/traefik-manager:1.15.4
+  aarch64: ghcr.io/chr0nzz/traefik-manager:1.15.4
