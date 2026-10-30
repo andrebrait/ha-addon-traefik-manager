@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: Commit to check (default: the one that triggered the caller)
+        description: "Commit to check (default: the one that triggered the caller)"
         type: string
         default: ""
       bump_to:
@@ -51,5 +51,5 @@ jobs:
            "crowdsec": {"lapi_url": "", "api_key": ""}, "env_vars": []}
           EOF
           docker run -d --name addon-test -p 5000:5000 -v "$PWD/data:/data" -v "$PWD/config:/config" addon-test
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5000/api/health && exit 0; sleep 2; done
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:5000/api/health && exit 0; sleep 2; done
           docker logs addon-test; exit 1
