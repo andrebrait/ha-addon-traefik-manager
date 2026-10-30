@@ -3,12 +3,27 @@ name: Lint
 on:
   push:
   pull_request:
+  # Also called by publish.yml (on main) and update.yml (on a candidate update, not yet committed).
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit to check (default: the one that triggered the caller)"
+        type: string
+        default: ""
+      bump_to:
+        description: Traefik Manager version to apply with bump.sh before checking
+        type: string
+        default: ""
 
 jobs:
   addon:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - if: inputs.bump_to != ''
+        run: .github/scripts/bump.sh "${{ inputs.bump_to }}"
       - uses: frenck/action-addon-linter@v2
         with:
           path: ./traefik_manager
@@ -17,7 +32,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - if: inputs.bump_to != ''
+        run: .github/scripts/bump.sh "${{ inputs.bump_to }}"
       - name: Build the add-on image (amd64)
         run: |
           from=$(sed -n 's/^  amd64: //p' traefik_manager/build.yaml)
           docker build --build-arg BUILD_FROM="$from" -t addon-test traefik_manager
+      - name: Start it and check its health endpoint
+        run: |
+          mkdir -p data config/traefik/dynamic
+          cat > data/options.json <<'EOF'
+          {"traefik_api_url": "http://127.0.0.1:8080", "static_config_path": "", "dynamic_config_dir": "/config/traefik/dynamic",
+           "acme_json_path": "", "access_log_path": "", "cookie_secure": false, "admin_password": "ci-only-password",
+           "oidc": {"enabled": false, "provider_url": "", "client_id": "", "client_secret": "", "display_name": "SSO",
+                    "allowed_groups": "", "allowed_emails": ""},
+           "crowdsec": {"lapi_url": "", "api_key": ""}, "env_vars": []}
+          EOF
+          docker run -d --name addon-test -p 5000:5000 -v "$PWD/data:/data" -v "$PWD/config:/config" addon-test
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:5000/api/health && exit 0; sleep 2; done
+          docker logs addon-test; exit 1

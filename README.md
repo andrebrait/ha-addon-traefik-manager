@@ -13,8 +13,17 @@ Traefik add-on running on the same Home Assistant.
 2. Install **Traefik Manager**, set its options (see the add-on's Documentation tab), and start it.
 
 Home Assistant offers new versions as add-on updates. The add-on builds on Traefik Manager's own
-image (`ghcr.io/chr0nzz/traefik-manager`), for `amd64` and `aarch64`, and follows its releases: a
-scheduled workflow opens a pull request for each new Traefik Manager release.
+image (`ghcr.io/chr0nzz/traefik-manager`), for `amd64` and `aarch64`.
+
+## Releases
+
+- Every pull request and push is linted, built and started (`lint.yml`).
+- Every add-on version that reaches `main` without a release yet is checked again and published as
+  `v<version>` (`publish.yml`): to release a change, bump `version` in `traefik_manager/config.yaml`
+  and add a `CHANGELOG.md` entry in the pull request.
+- Every day, `update.yml` checks for a new Traefik Manager release, applies it (`.github/scripts/bump.sh`),
+  checks it, commits it to `main` and publishes it.
+- Any failure while updating or publishing opens an issue assigned to the repository owner.
 
 This is an add-on repository, not a HACS repository: HACS installs integrations and frontend
 cards, while add-ons come from add-on repositories such as this one.

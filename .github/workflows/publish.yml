@@ -1,0 +1,72 @@
+# Publishes a release for every add-on version that reaches main: a merged pull request that changes
+# traefik_manager/config.yaml's version, or the scheduled update (update.yml calls this, since its
+# own push does not trigger workflows). Checks main first; any failure opens an issue assigned to
+# the repository owner, so GitHub notifies them.
+name: Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency: publish
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(sed -n 's/^version: "\(.*\)"$/\1/p' traefik_manager/config.yaml)
+          if gh release view "v$v" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "v$v is already released"
+          else
+            echo "version=$v" >> "$GITHUB_OUTPUT"
+          fi
+
+  ci:
+    needs: version
+    if: needs.version.outputs.version != ''
+    uses: ./.github/workflows/lint.yml
+    with:
+      ref: main
+
+  release:
+    needs: [version, ci]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.version.outputs.version }}
+        run: |
+          awk -v v="## $V" '$0 == v {on = 1; next} /^## / {on = 0} on' traefik_manager/CHANGELOG.md > notes.md
+          gh release create "v$V" --target "$(git rev-parse HEAD)" --title "Traefik Manager add-on $V" --notes-file notes.md
+
+  notify:
+    needs: [version, ci, release]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.version.outputs.version }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" --assignee "${{ github.repository_owner }}" \
+            --title "Publishing the add-on ${V:-?} failed" \
+            --body "Nothing was released. Run: $RUN"
