@@ -1,52 +1,85 @@
-# Opens a pull request when Traefik Manager publishes a release newer than the add-on's version.
+# Daily: when Traefik Manager has a release newer than the add-on, check the updated add-on (lint,
+# build, start), commit it to main and publish it (publish.yml). Any failure opens an issue
+# assigned to the repository owner, so GitHub notifies them; nothing is committed then.
 name: Follow Traefik Manager releases
 
 on:
   schedule:
     - cron: "17 6 * * *"
   workflow_dispatch:
+    inputs:
+      version:
+        description: Use this Traefik Manager version instead of the latest release (for testing)
+        type: string
+        default: ""
 
 permissions:
   contents: write
-  pull-requests: write
+  issues: write
+
+concurrency: update
 
 jobs:
-  update:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCED: ${{ inputs.version }}
+        run: |
+          current=$(sed -n 's/^version: "\(.*\)"$/\1/p' traefik_manager/config.yaml)
+          if [ -n "$FORCED" ]; then
+            echo "version=$FORCED" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          latest=$(gh release view --repo chr0nzz/traefik-manager --json tagName -q .tagName)
+          latest=${latest#v}
+          newest=$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -1)
+          echo "add-on $current, Traefik Manager $latest"
+          if [ "$latest" != "$current" ] && [ "$newest" = "$latest" ]; then
+            echo "version=$latest" >> "$GITHUB_OUTPUT"
+          fi
+
+  ci:
+    needs: check
+    if: needs.check.outputs.version != ''
+    uses: ./.github/workflows/lint.yml
+    with:
+      bump_to: ${{ needs.check.outputs.version }}
+
+  commit:
+    needs: [check, ci]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Compare versions
-        id: v
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          latest=$(gh release view --repo chr0nzz/traefik-manager --json tagName -q .tagName)
-          latest=${latest#v}
-          current=$(sed -n 's/^version: "\(.*\)"$/\1/p' traefik_manager/config.yaml)
-          echo "latest=$latest" >> "$GITHUB_OUTPUT"
-          echo "current=$current" >> "$GITHUB_OUTPUT"
-          newest=$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -1)
-          if [ "$latest" != "$current" ] && [ "$newest" = "$latest" ]; then echo "newer=true" >> "$GITHUB_OUTPUT"; fi
-
-      - name: Update the add-on
-        if: steps.v.outputs.newer == 'true'
-        env:
-          NEW: ${{ steps.v.outputs.latest }}
-          OLD: ${{ steps.v.outputs.current }}
-        run: |
-          sed -i "s/^version: \".*\"$/version: \"$NEW\"/" traefik_manager/config.yaml
-          sed -i "s|ghcr.io/chr0nzz/traefik-manager:$OLD|ghcr.io/chr0nzz/traefik-manager:$NEW|" traefik_manager/build.yaml
-          printf '# Changelog\n\n## %s\n\n- Traefik Manager %s: https://github.com/chr0nzz/traefik-manager/releases/tag/v%s\n' "$NEW" "$NEW" "$NEW" > new.md
-          tail -n +2 traefik_manager/CHANGELOG.md >> new.md && mv new.md traefik_manager/CHANGELOG.md
-
-      - name: Open the pull request
-        if: steps.v.outputs.newer == 'true'
-        uses: peter-evans/create-pull-request@v7
         with:
-          branch: update/traefik-manager-${{ steps.v.outputs.latest }}
-          title: Traefik Manager ${{ steps.v.outputs.latest }}
-          commit-message: Traefik Manager ${{ steps.v.outputs.latest }}
-          body: |
-            Traefik Manager [${{ steps.v.outputs.latest }}](https://github.com/chr0nzz/traefik-manager/releases/tag/v${{ steps.v.outputs.latest }}).
-            Check its release notes for changed settings before merging.
+          ref: main
+      - env:
+          V: ${{ needs.check.outputs.version }}
+        run: |
+          .github/scripts/bump.sh "$V"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Traefik Manager $V"
+          git push origin HEAD:main
+
+  publish:
+    needs: commit
+    uses: ./.github/workflows/publish.yml
+
+  notify:
+    needs: [check, ci, commit]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.check.outputs.version }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" --assignee "${{ github.repository_owner }}" \
+            --title "Automatic update to Traefik Manager ${V:-?} failed" \
+            --body "Nothing was committed or released. Run: $RUN"
