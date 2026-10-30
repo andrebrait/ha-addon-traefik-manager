@@ -20,7 +20,8 @@ image (`ghcr.io/chr0nzz/traefik-manager`), for `amd64` and `aarch64`.
 - Every pull request and push is linted, built and started (`lint.yml`).
 - Every add-on version that reaches `main` without a release yet is checked again and published as
   `v<version>` (`publish.yml`): to release a change, bump `version` in `traefik_manager/config.yaml`
-  and add a `CHANGELOG.md` entry in the pull request.
+  and add a `CHANGELOG.md` entry in the pull request. The version follows Traefik Manager's; a change
+  to the add-on alone adds a suffix (`1.15.4-1`, `1.15.4-2`, ...).
 - Every day, `update.yml` checks for a new Traefik Manager release, applies it (`.github/scripts/bump.sh`),
   checks it, commits it to `main` and publishes it.
 - Any failure while updating or publishing opens an issue assigned to the repository owner.

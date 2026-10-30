@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
+      sha: ${{ steps.v.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +31,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           v=$(sed -n 's/^version: "\(.*\)"$/\1/p' traefik_manager/config.yaml)
+          # The commit checked and released: main can move while this workflow runs.
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           if gh release view "v$v" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             echo "v$v is already released"
           else
@@ -41,7 +44,7 @@ jobs:
     if: needs.version.outputs.version != ''
     uses: ./.github/workflows/lint.yml
     with:
-      ref: main
+      ref: ${{ needs.version.outputs.sha }}
 
   release:
     needs: [version, ci]
@@ -49,13 +52,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.version.outputs.sha }}
       - env:
           GH_TOKEN: ${{ github.token }}
           V: ${{ needs.version.outputs.version }}
+          SHA: ${{ needs.version.outputs.sha }}
         run: |
           awk -v v="## $V" '$0 == v {on = 1; next} /^## / {on = 0} on' traefik_manager/CHANGELOG.md > notes.md
-          gh release create "v$V" --target "$(git rev-parse HEAD)" --title "Traefik Manager add-on $V" --notes-file notes.md
+          gh release create "v$V" --target "$SHA" --title "Traefik Manager add-on $V" --notes-file notes.md
 
   notify:
     needs: [version, ci, release]
