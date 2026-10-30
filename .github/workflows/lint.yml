@@ -51,5 +51,21 @@ jobs:
            "crowdsec": {"lapi_url": "", "api_key": ""}, "env_vars": []}
           EOF
           docker run -d --name addon-test -p 5000:5000 -v "$PWD/data:/data" -v "$PWD/config:/config" addon-test
-          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:5000/api/health && exit 0; sleep 2; done
-          docker logs addon-test; exit 1
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:5000/api/health && break; sleep 2; done
+          curl -sf http://127.0.0.1:5000/api/health || { docker logs addon-test; exit 1; }
+      - name: Restart with changed OpenID options (rewrites the existing manager.yml)
+        run: |
+          docker rm -f addon-test
+          python3 - <<'EOF'
+          import json
+          p = "data/options.json"; o = json.load(open(p))
+          o["oidc"].update(enabled=True, provider_url="https://idp.example/", client_id="ci-client",
+                           client_secret="ci-secret", display_name="two\nlines", allowed_groups="admins")
+          json.dump(o, open(p, "w"))
+          EOF
+          docker run -d --name addon-test -p 5000:5000 -v "$PWD/data:/data" -v "$PWD/config:/config" addon-test
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:5000/api/health && break; sleep 2; done
+          curl -sf http://127.0.0.1:5000/api/health || { docker logs addon-test; exit 1; }
+          sudo grep -q '^oidc_enabled: true' data/manager.yml
+          sudo grep -q '^oidc_client_id: ci-client' data/manager.yml
+          sudo grep -q '^oidc_client_secret: gAAAAA' data/manager.yml   # stored encrypted

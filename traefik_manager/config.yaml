@@ -1,5 +1,5 @@
 name: Traefik Manager
-version: "1.15.4"
+version: "1.15.4-1"
 slug: traefik_manager
 description: Web UI for the routes, services, middlewares and certificates of a Traefik instance
 url: https://github.com/andrebrait/ha-addon-traefik-manager
