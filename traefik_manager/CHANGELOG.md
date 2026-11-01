@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.5
+
+- Traefik Manager 1.15.5: https://github.com/chr0nzz/traefik-manager/releases/tag/v1.15.5
+
 ## 1.15.4-1
 
 - The OpenID options are written through Traefik Manager's own settings code on every start:
