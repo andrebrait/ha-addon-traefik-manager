@@ -16,6 +16,42 @@ SETTINGS = os.path.join(DATA, "manager.yml")
 with open(os.path.join(DATA, "options.json")) as f:
     opts = json.load(f)
 
+
+def serve_webui_link(url):
+    """Answer Home Assistant's "Open Web UI" (ingress, port 8099) by opening the add-on's own address.
+
+    Traefik Manager does not work under the ingress path prefix, so the ingress page only sends the
+    whole browser window (not the ingress frame) to the address Traefik serves it on.
+    """
+    from html import escape
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    if url:
+        body = (f'<!doctype html><meta charset="utf-8"><title>Traefik Manager</title>'
+                f'<a href="{escape(url)}" target="_top">Open Traefik Manager</a>'
+                '<script>top.location.replace(document.links[0].href)</script>')
+    else:
+        body = ('<!doctype html><meta charset="utf-8"><title>Traefik Manager</title>'
+                '<p>Set the add-on option "Web UI URL" to the address Traefik serves Traefik Manager on.')
+    data = body.encode()
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *args):
+            pass
+
+    HTTPServer(("", 8099), Handler).serve_forever()
+
+
+if os.fork() == 0:   # before Traefik Manager replaces this process
+    serve_webui_link(opts.get("webui_url"))
+
 env = os.environ
 env["SETTINGS_PATH"] = SETTINGS   # also puts the encryption key and caches in /data
 env["BACKUP_DIR"] = os.path.join(DATA, "backups")
