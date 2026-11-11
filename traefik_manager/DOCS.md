@@ -29,6 +29,7 @@ Traefik Manager edits Traefik's files and reads Traefik's API, so the Traefik ad
 | `admin_password` | The admin password; always replaces the one stored by the UI |
 | `oidc` | Login through an OpenID Connect provider (authentik, Keycloak, ...). Register the redirect URI `https://<your host>/auth/oidc/callback` with the provider. `allowed_groups` or `allowed_emails` must be set, or every login is refused |
 | `crowdsec` | The CrowdSec LAPI URL and a bouncer key, to show and manage decisions |
+| `webui_url` | The address Traefik serves Traefik Manager on, for example `https://traefik-manager.example.com`; the add-on's **Open Web UI** button opens it |
 | `env_vars` | Any other [Traefik Manager environment variable](https://traefik-manager.xyzlab.dev/env-vars.html), as `KEY=VALUE` |
 
 The add-on writes the `oidc` options into Traefik Manager's settings on every start, so the
@@ -43,5 +44,10 @@ The web UI listens on port 5000 inside the add-on. Either:
   middlewares apply), using the add-on's host name, for example `http://<repository id>-traefik-manager:5000`;
 - or publish port 5000 in the add-on's Network settings. That serves plain HTTP: only on a
   trusted network.
+
+Set `webui_url` to that address to get an **Open Web UI** button on the add-on's page (and, if you
+turn on "Show in sidebar", a sidebar entry). It opens Traefik Manager in the whole window, at that
+address, rather than inside Home Assistant: Traefik Manager does not run behind Home Assistant's
+ingress, so the button only works where that address is reachable.
 
 Traefik Manager can change every route of your Traefik. Do not expose it to the internet.

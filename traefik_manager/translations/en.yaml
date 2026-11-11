@@ -14,6 +14,9 @@ configuration:
   access_log_path:
     name: Access log
     description: Traefik's access log file (optional)
+  webui_url:
+    name: Web UI URL
+    description: The address Traefik serves Traefik Manager on; the Open Web UI button opens it (optional)
   cookie_secure:
     name: Secure cookies
     description: Turn on when Traefik Manager is served over HTTPS

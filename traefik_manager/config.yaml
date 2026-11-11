@@ -1,5 +1,5 @@
 name: Traefik Manager
-version: "1.15.6"
+version: "1.15.6-1"
 slug: traefik_manager
 description: Web UI for the routes, services, middlewares and certificates of a Traefik instance
 url: https://github.com/andrebrait/ha-addon-traefik-manager
@@ -7,6 +7,8 @@ arch:
   - amd64
   - aarch64
 init: false
+# Only for the "Open Web UI" button: the ingress page opens webui_url (see run.py).
+ingress: true
 ports:
   5000/tcp: null
 ports_description:
@@ -45,6 +47,7 @@ schema:
   dynamic_config_dir: str
   acme_json_path: str?
   access_log_path: str?
+  webui_url: url?
   cookie_secure: bool
   admin_password: password?
   oidc:
