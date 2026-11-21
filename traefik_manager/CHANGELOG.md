@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.8
+
+- Traefik Manager 1.15.8: https://github.com/chr0nzz/traefik-manager/releases/tag/v1.15.8
+
 ## 1.15.7
 
 - Traefik Manager 1.15.7: https://github.com/chr0nzz/traefik-manager/releases/tag/v1.15.7
